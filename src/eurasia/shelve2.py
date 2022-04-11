@@ -28,7 +28,7 @@ def open(filename, pool=None):
 class Pool:
 	def __init__(self, n=16):
 		self.queue = Queue()
-		for i in xrange(n):
+		for _ in xrange(n):
 			start_new_thread(self.pipe, ())
 
 	def __call__(self, func):
@@ -109,8 +109,8 @@ class Base(object):
 			self._p_conn[key] = self
 
 class Persistent(Base):
-	def __new__(klass, *args, **kw):
-		o = __new__(klass)
+	def __new__(self, *args, **kw):
+		o = __new__(self)
 		o.__dict__['_p_data'] = {}
 		return o
 
@@ -153,17 +153,12 @@ class Persistent(Base):
 class BNode(Base):
 	@property
 	def min_item(self):
-		if not self._p_ldata[1]:
-			return self._p_data[0][0]
-		else:
-			return self._p_data[1][0].min_item
+		return self._p_data[1][0].min_item if self._p_ldata[1] else self._p_data[0][0]
 
 	@property
 	def max_item(self):
-		if not self._p_ldata[1]:
-			return self._p_data[0][-1]
-		else:
-			return self._p_data[1][-1].max_item
+		return (self._p_data[1][-1].max_item
+		        if self._p_ldata[1] else self._p_data[0][-1])
 
 	def __init__(self, key=None, conn=None):
 		if key:
@@ -176,11 +171,7 @@ class BNode(Base):
 		self._p_conn = proxy(_getframe(1).f_locals['self'])
 
 	def __len__(self):
-		result = len(self._p_ldata[0])
-		for node in self._p_data[1] or []:
-			result += len(node)
-
-		return result
+		return len(self._p_ldata[0]) + sum(len(node) for node in self._p_data[1] or [])
 
 	def __delitem__(self, key):
 		p = self.get_position(key)
@@ -278,65 +269,49 @@ class BNode(Base):
 
 	def __iter__(self):
 		if not self._p_ldata[1]:
-			for item in self._p_data[0]:
-				yield item
+			yield from self._p_data[0]
 		else:
 			for position, item in enumerate(self._p_data[0]):
-				for it in self._p_data[1][position]:
-					yield it
-
+				yield from self._p_data[1][position]
 				yield item
 
-			for it in self._p_data[1][-1]:
-				yield it
+			yield from self._p_data[1][-1]
 
 	def __reversed__(self):
 		if not self._p_ldata[1]:
-			for item in reversed(self._p_data[0]):
-				yield item
+			yield from reversed(self._p_data[0])
 		else:
-			for item in reversed(self._p_data[1][-1]):
-				yield item
-
+			yield from reversed(self._p_data[1][-1])
 			for position in range(len(self._p_data[0]) - 1, -1, -1):
 				yield self._p_data[0][position]
-				for item in reversed(self._p_data[1][position]):
-					yield item
+				yield from reversed(self._p_data[1][position])
 
 	def iter_from(self, key):
 		position = self.get_position(key)
 		if not self._p_data[1]:
-			for item in self._p_data[0][position:]:
-				yield item
+			yield from self._p_data[0][position:]
 		else:
-			for item in self._p_data[1][position].iter_from(key):
-				yield item
-
+			yield from self._p_data[1][position].iter_from(key)
 			for p in range(position, len(self._p_data[0])):
 				yield self._p_data[0][p]
-				for item in self._p_data[1][p + 1]:
-					yield item
+				yield from self._p_data[1][p + 1]
 
 	def iter_backward_from(self, key):
 		position = self.get_position(key)
 		if not self._p_data[1]:
-			for item in reversed(self._p_data[0][:position]):
-				yield item
+			yield from reversed(self._p_data[0][:position])
 		else:
-			for item in self._p_data[1][position].iter_backward_from(key):
-				yield item
-
+			yield from self._p_data[1][position].iter_backward_from(key)
 			for p in range(position - 1, -1, -1):
 				yield self._p_data[0][p]
-				for item in reversed(self._p_data[1][p]):
-					yield item
+				yield from reversed(self._p_data[1][p])
 
 	def get_position(self, key):
-		for position, item in enumerate(self._p_ldata[0]):
-			if item[0] >= key:
-				return position
-
-		return len(self._p_data[0])
+		return next(
+		    (position
+		     for position, item in enumerate(self._p_ldata[0]) if item[0] >= key),
+		    len(self._p_data[0]),
+		)
 
 	def search(self, key):
 		position = self.get_position(key)
@@ -348,7 +323,7 @@ class BNode(Base):
 			return self._p_data[1][position].search(key)
 
 	def insert_item(self, item):
-		assert not len(self._p_ldata[0]) == 2 * minimum_degree - 1
+		assert len(self._p_ldata[0]) != 2 * minimum_degree - 1
 		key = item[0]
 		position = self.get_position(key)
 		if position < len(self._p_data[0]) and self._p_data[0][position][0] == key:
@@ -419,8 +394,8 @@ class BTree(Base):
 	def _p_data(self):
 		return self._p_root._p_data
 
-	def __new__(klass, *args, **kw):
-		o = __new__(klass)
+	def __new__(self, *args, **kw):
+		o = __new__(self)
 		o._p_root = BNode()
 		return o
 
@@ -533,11 +508,7 @@ class BTree(Base):
 					'update expected at most 1 argument, '
 					'got %s') % len(args) )
 			items = args[0]
-			if hasattr(items, 'iteritems'):
-				item_sequence = items.iteritems()
-			else:
-				item_sequence = items
-
+			item_sequence = items.iteritems() if hasattr(items, 'iteritems') else items
 			for key, value in item_sequence:
 				self[key] = value
 
@@ -567,12 +538,10 @@ class BTree(Base):
 		return list(self.iteritems())
 
 	def iteritems(self):
-		for key, value in self._p_root:
-			yield (key, value)
+		yield from self._p_root
 
 	def items_backward(self):
-		for key, value in reversed(self._p_root):
-			yield (key, value)
+		yield from reversed(self._p_root)
 
 	def items_from(self, key, closed=True):
 		for key2, value in self._p_root.iter_from(key):
@@ -585,8 +554,7 @@ class BTree(Base):
 			if item is not None:
 				yield (item[0], item[1])
 
-		for key, value in self._p_root.iter_backward_from(key):
-			yield (key, value)
+		yield from self._p_root.iter_backward_from(key)
 
 	def items_range(self, start, end, closed_start=True, closed_end=False):
 		if start <= end:
@@ -740,15 +708,12 @@ class Connection:
 			if self.changed or self.deleted:
 				e = channel()
 				self.queue.put((e, self._close_and_sync, (), {}))
-				errno, e = e.receive()
-				if errno != 0:
-					raise e
 			else:
 				e = channel()
 				self.queue.put((e, self._close, (), {}))
-				errno, e = e.receive()
-				if errno != 0:
-					raise e
+			errno, e = e.receive()
+			if errno != 0:
+				raise e
 
 	def _close(self):
 		self.db.close()
@@ -903,8 +868,11 @@ try:
 	urandom(16)
 except NotImplementedError:
 	def uuid4():
-		n = long(fmt % tuple(randrange(256) for i in range16))
-		n &= n1; n |= n2; n &= n3; n |= n4
+		n = long(fmt % tuple(randrange(256) for _ in range16))
+		n &= n1
+		n |= n2
+		n &= n3
+		n |= n4
 		return ''.join(chr((n >> shift) & 0xff) for shift in range01288)
 else:
 	def uuid4():

@@ -111,10 +111,7 @@ class Daemon:
 				os._exit(127)
 
 	def status(self):
-		if not self.pid:
-			return 'stopped'
-		else:
-			return 'running'
+		return 'running' if self.pid else 'stopped'
 
 	def stop(self):
 		if not self.pid:
@@ -181,10 +178,9 @@ def ServerProxy(address, **args):
 	if isinstance(address, str):
 		return UnixStreamServerProxy_NG(address, **args)
 
-	else:
-		host, port = address
-		host = (host, '127.0.0.1')[host == '0.0.0.0']
-		return ServerProxy_N___G('http://%s:%d' %(host, port), **args)
+	host, port = address
+	host = (host, '127.0.0.1')[host == '0.0.0.0']
+	return ServerProxy_N___G('http://%s:%d' %(host, port), **args)
 
 class DaemonizeTools:
 	@staticmethod

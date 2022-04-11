@@ -16,7 +16,7 @@ def config(**args):
 	          'port' not in args and 'bind' not in args):
 
 		if handler in ('tcphandler', 'httphandler'):
-			raise ValueError('%s handler not support fcgi mode, need address' %handler)
+			raise ValueError(f'{handler} handler not support fcgi mode, need address')
 
 		import fcgi
 		globals()['fcgi_mainloop'] = fcgi.mainloop
@@ -41,15 +41,18 @@ def mainloop(cpus=False):
 		else:
 			utility.setprocname(gdct['procname'])
 
-	uid = gdct.get('uid', gdct.get('user'))
-	if uid:
+	if uid := gdct.get('uid', gdct.get('user')):
 		import utility
 		utility.setuid(uid)
 
 	if 'verbose' in gdct:
 		verbose = gdct['verbose']
-		if isinstance(verbose , basestring) and str(
-		              verbose ).lower() in ('off', 'false', 'no', 'n'):
+		if isinstance(verbose, basestring) and str(verbose).lower() in {
+		    'off',
+		    'false',
+		    'no',
+		    'n',
+		}:
 
 			verbose = False
 

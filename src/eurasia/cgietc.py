@@ -56,18 +56,18 @@ class RemoteCall(object):
 			arguments = args and ', '.join([json(arg) for arg in args]) or ''))
 
 	def __getattr__(self, name):
-		return RemoteCall(self.httpfile, '%s.%s' %(self._name, name))
+		return RemoteCall(self.httpfile, f'{self._name}.{name}')
 
 	def __getitem__(self, name):
 		if isinstance(unicode):
-			return RemoteCall(self.httpfile, '%s[%s]' %(self._name, repr(name)[1:]))
+			return RemoteCall(self.httpfile, f'{self._name}[{repr(name)[1:]}]')
 
-		return RemoteCall(self.httpfile, '%s[%s]' %(self._name, repr(name)))
+		return RemoteCall(self.httpfile, f'{self._name}[{repr(name)}]')
 
 def Form(httpfile, max_size=1048576):
 	if httpfile.method == 'POST':
 		length = int(httpfile.environ['CONTENT_LENGTH'])
-		if int(length) > max_size:
+		if length > max_size:
 			httpfile.close()
 			raise IOError('overload')
 
@@ -185,7 +185,7 @@ class SimpleUpload(dict):
 		next, last = self.next, self.last
 		if line[:2] == '--':
 			data = line.strip()
-			if data == next or data == last:
+			if data in [next, last]:
 				raise IOError
 
 		el = line[-2:] == '\r\n' and '\r\n' or (line[-1] == '\n' and '\n' or '')
@@ -196,7 +196,7 @@ class SimpleUpload(dict):
 
 			if line2[:2] == '--' and el:
 				data = line2.strip()
-				if data == next or data == last:
+				if data in [next, last]:
 					yield line[:-len(el)]
 					break
 			yield line
@@ -325,9 +325,11 @@ def json(obj):
 	elif obj is False: return 'false'
 	elif isinstance(obj, (int, long)): return str(obj)
 	elif isinstance(obj, float): return _json_float(obj)
-	elif isinstance(obj, (list, tuple)): return '[%s]' %', '.join(_json_array(obj))
+	elif isinstance(obj, (list, tuple)):
+		return f"[{', '.join(_json_array(obj))}]"
 	elif isinstance(obj, dict): return '{%s}' %', '.join(_json_object(obj))
-	elif isinstance(obj, RemoteCall): return '__comet__.' + obj.function
+	elif isinstance(obj, RemoteCall):
+		return f'__comet__.{obj.function}'
 	raise ValueError
 
 def _json_array(l):

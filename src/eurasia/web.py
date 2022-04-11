@@ -7,8 +7,10 @@ from _weakref import proxy
 from stackless import channel, tasklet
 from time import gmtime, strftime, time
 from BaseHTTPServer import BaseHTTPRequestHandler
-RESPONSES = dict((key, '%d %s' %(key, value[0]))
-              for key, value in BaseHTTPRequestHandler.responses.items())
+RESPONSES = {
+    key: '%d %s' % (key, value[0])
+    for key, value in BaseHTTPRequestHandler.responses.items()
+}
 
 del BaseHTTPRequestHandler, sys.modules['BaseHTTPServer']
 
@@ -77,9 +79,7 @@ class HttpFile(object):
 		environ['SCRIPT_NAME'] = ''
 		environ['REQUEST_URI'] = uri
 
-		sockaddr = sockfile.address
-
-		if sockaddr:
+		if sockaddr := sockfile.address:
 			environ['REMOTE_ADDR'] = sockaddr[0]
 			environ['REMOTE_PORT'] = sockaddr[1]
 		else:
@@ -98,10 +98,8 @@ class HttpFile(object):
 		self.write = self.content.append
 
 	def __iter__(self):
-		data = self.readline()
-		while data:
+		while data := self.readline():
 			yield data
-			data = self.readline()
 
 	def __del__(self):
 		if hasattr(self, 'keep_alive'):
@@ -144,9 +142,8 @@ class HttpFile(object):
 				environ['QUERY_STRING'] = ''
 		else:
 			script_name, path_info, query = uri
-			environ['REQUEST_URI'] = \
-				'%s%s?%s' %(script_name , path_info, query) if query \
-				else        script_name + path_info
+			environ['REQUEST_URI'] = (f'{script_name}{path_info}?{query}'
+			                          if query else script_name + path_info)
 
 			environ['PATH_INFO'   ] = path_info
 			environ['SCRIPT_NAME' ] = script_name
@@ -163,9 +160,8 @@ class HttpFile(object):
 		environ['SCRIPT_NAME'] = script_name
 
 		query = environ['QUERY_STRING']
-		environ['REQUEST_URI'] = \
-			'%s%s?%s' %(script_name , environ['PATH_INFO'], query) if query \
-			else        script_name + environ['PATH_INFO']
+		environ['REQUEST_URI'] = (f"{script_name}{environ['PATH_INFO']}?{query}"
+		                          if query else script_name + environ['PATH_INFO'])
 
 	script_name = property(get_script_name, set_script_name)
 	del get_script_name, set_script_name
@@ -178,9 +174,8 @@ class HttpFile(object):
 		environ['PATH_INFO'] = path_info
 
 		query = environ['QUERY_STRING']
-		environ['REQUEST_URI'] = \
-			'%s%s?%s' %(environ['SCRIPT_NAME'] , path_info, query) if query \
-			else        environ['SCRIPT_NAME'] + path_info
+		environ['REQUEST_URI'] = (f"{environ['SCRIPT_NAME']}{path_info}?{query}"
+		                          if query else environ['SCRIPT_NAME'] + path_info)
 
 	path_info = property(get_path_info, set_path_info)
 	del get_path_info, set_path_info
@@ -191,9 +186,9 @@ class HttpFile(object):
 	def set_query_string(self, query):
 		environ = self.environ
 		environ['QUERY_STRING'] = query
-		environ['REQUEST_URI' ] = \
-			'%s%s?%s' %(environ['SCRIPT_NAME'] , environ['PATH_INFO'], query) if query \
-			else        environ['SCRIPT_NAME'] + environ['PATH_INFO']
+		environ['REQUEST_URI'] = (
+		    f"{environ['SCRIPT_NAME']}{environ['PATH_INFO']}?{query}"
+		    if query else environ['SCRIPT_NAME'] + environ['PATH_INFO'])
 
 	query_string = property(get_query_string, set_query_string)
 	del get_query_string, set_query_string
@@ -205,8 +200,8 @@ class HttpFile(object):
 			return None
 
 	def setuid(self, uid):
-		self.headers['Set-Cookie'] = 'uid=%s; path=/; expires=%s' %(
-			uid, strftime('%a, %d-%b-%Y %H:%M:%S GMT', gmtime(time() + 157679616)))
+		self.headers[
+		    'Set-Cookie'] = f"uid={uid}; path=/; expires={strftime('%a, %d-%b-%Y %H:%M:%S GMT', gmtime(time() + 157679616))}"
 
 	uid = property(getuid, setuid)
 	del getuid, setuid
@@ -252,7 +247,7 @@ class HttpFile(object):
 	def update(self, *args, **kwargs):
 		if args:
 			if len(args) > 1:
-				raise TypeError('update expected at most 1 argument, got %s' %len(args))
+				raise TypeError(f'update expected at most 1 argument, got {len(args)}')
 
 			items = args[0]
 			if hasattr(items, 'items'):
@@ -278,7 +273,6 @@ class HttpFile(object):
 				raise
 
 			self.left = 0
-			return data
 		else:
 			try:
 				data = self.sockfile.read(size)
@@ -287,7 +281,8 @@ class HttpFile(object):
 				raise
 
 			self.left -= len(data)
-			return data
+
+		return data
 
 	def readline(self, size=-1):
 		if size == -1 or size >= self.left:
@@ -315,12 +310,10 @@ class HttpFile(object):
 
 	def begin(self):
 		self.keep_alive = self.keep_alive and self.keep_alive.send(0)
-		headers_set = ['%s: %s' %(key, value)
-		                      for key, value in self.headers.items()] + [
-		               '%s: %s' %(key, value)
-		                      for key, value in self.headers_set]
+		headers_set = [f'{key}: {value}' for key, value in self.headers.items()
+		               ] + [f'{key}: {value}' for key, value in self.headers_set]
 
-		headers_set.insert(0, '%s %s' %(self.version, self._status))
+		headers_set.insert(0, f'{self.version} {self._status}')
 		headers_set.append('\r\n')
 
 		self.write = self.sockfile.write
@@ -330,12 +323,10 @@ class HttpFile(object):
 
 	def wbegin(self, data=''):
 		self.keep_alive = self.keep_alive and self.keep_alive.send(0)
-		headers_set = ['%s: %s' %(key, value)
-		                      for key, value in self.headers.items()] + [
-		               '%s: %s' %(key, value)
-		                      for key, value in self.headers_set]
+		headers_set = [f'{key}: {value}' for key, value in self.headers.items()
+		               ] + [f'{key}: {value}' for key, value in self.headers_set]
 
-		headers_set.insert(0, '%s %s' %(self.version, self._status))
+		headers_set.insert(0, f'{self.version} {self._status}')
 		headers_set.append('\r\n')
 
 		self.write = self.sockfile.write
@@ -349,12 +340,10 @@ class HttpFile(object):
 
 		data = ''.join(self.content)
 		self.headers['Content-Length'] = str(len(data))
-		headers_set = ['%s: %s' %(key, value)
-		                     for key, value in self.headers.items()] + [
-		               '%s: %s' %(key, value)
-		                      for key, value in self.headers_set]
+		headers_set = [f'{key}: {value}' for key, value in self.headers.items()
+		               ] + [f'{key}: {value}' for key, value in self.headers_set]
 
-		headers_set.insert(0, '%s %s' %(self.version, self._status))
+		headers_set.insert(0, f'{self.version} {self._status}')
 		headers_set.append('\r\n')
 
 		data = '\r\n'.join(headers_set) + data

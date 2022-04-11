@@ -826,9 +826,6 @@ def mainloop0():
 			stackless.run()
 		except (SystemExit, KeyboardInterrupt):
 			break
-		except:
-			print_exc(file=stderr)
-			continue
 
 def cpu_count():
 	if sys.platform == 'win32':

@@ -52,11 +52,10 @@ def main():
 	setup(**args)
 
 def skel_visit(skel, dirname, names):
-	L = []
-	for name in names:
-		if os.path.isfile(os.path.join(dirname, name)):
-			L.append(os.path.join(dirname, name))
-
+	L = [
+	    os.path.join(dirname, name) for name in names
+	    if os.path.isfile(os.path.join(dirname, name))
+	]
 	skel.append([os.path.join('eurasia', dirname), L])
 
 if __name__ == '__main__':
