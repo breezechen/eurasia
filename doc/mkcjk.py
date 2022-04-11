@@ -9,6 +9,5 @@ for filename in os.listdir(dirname):
 
 	fullname = os.path.join(dirname, filename)
 	data = unicode(unicode(open(fullname).read(), 'utf-8').encode('iso8859-1'), 'utf-8').encode('utf-8')
-	fd = open(fullname, 'w')
-	fd.write(data)
-	fd.close()
+	with open(fullname, 'w') as fd:
+		fd.write(data)

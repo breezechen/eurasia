@@ -28,7 +28,7 @@ def _compile(code, base, tr):
 
 		elif isinstance(i, Var) and base > 0:
 			tabs = base*'\t'
-			code.append('%s____w(%s)' %(tabs, i.data))
+			code.append(f'{tabs}____w({i.data})')
 
 		elif isinstance(i, If):
 			code.append('%sif %s:' %(base*'\t', i.args))

@@ -86,9 +86,7 @@ except ImportError: # we are running from CPython
             self._frame.throw()
 
         def _is_alive(self):
-            if self._frame is None:
-                return False
-            return not self._frame.dead
+            return False if self._frame is None else not self._frame.dead
         is_alive = property(_is_alive)
         del _is_alive
 
@@ -198,8 +196,7 @@ def register_stackless_primitive(thang, retval_expr='None'):
 def rewrite_stackless_primitive(coro_state, alive, tempval):
     flags, state, thunk, parent = coro_state
     for i, frame in enumerate(state):
-        retval_expr = _stackless_primitive_registry.get(frame.f_code)
-        if retval_expr:
+        if retval_expr := _stackless_primitive_registry.get(frame.f_code):
             # this tasklet needs to stop pickling here and return its value.
             tempval = eval(retval_expr, globals(), frame.f_locals)
             state = state[:i]
@@ -269,7 +266,7 @@ class channel(object):
         self.schedule_all = False
 
     def __str__(self):
-        return 'channel[%s](%s,%s)' % (self.label, self.balance, self.queue)
+        return f'channel[{self.label}]({self.balance},{self.queue})'
 
     def close(self):
         """
@@ -387,8 +384,8 @@ class tasklet(coroutine):
     module.
     """
     tempval = None
-    def __new__(cls, func=None, label=''):
-        res = coroutine.__new__(cls)
+    def __new__(self, func=None, label=''):
+        res = coroutine.__new__(self)
         res.label = label
         res._task_id = None
         return res
@@ -407,7 +404,7 @@ class tasklet(coroutine):
         _global_task_id += 1
 
     def __str__(self):
-        return '<tasklet[%s, %s]>' % (self.label,self._task_id)
+        return f'<tasklet[{self.label}, {self._task_id}]>'
 
     __repr__ = __str__
 
@@ -448,10 +445,9 @@ class tasklet(coroutine):
         func = self.func
         def _func():
             try:
-                try:
-                    func(*argl, **argd)
-                except TaskletExit:
-                    pass
+                func(*argl, **argd)
+            except TaskletExit:
+                pass
             finally:
                 _scheduler_remove(self)
                 self.alive = False
@@ -514,10 +510,7 @@ def getcurrent():
     """
 
     curr = coroutine.getcurrent()
-    if curr is _main_coroutine:
-        return _main_tasklet
-    else:
-        return curr
+    return _main_tasklet if curr is _main_coroutine else curr
 
 _run_calls = []
 def run():
@@ -550,8 +543,7 @@ def schedule_remove(retval=None):
     schedule_remove(retval=stackless.current) -- ditto, and remove self.
     """
     _scheduler_remove(getcurrent())
-    r = schedule(retval)
-    return r
+    return schedule(retval)
 
 
 def schedule(retval=None):
@@ -601,7 +593,7 @@ def _init():
                 return getattr(self._coro,attr)
 
             def __str__(self):
-                return '<tasklet %s a:%s>' % (self._task_id, self.is_alive)
+                return f'<tasklet {self._task_id} a:{self.is_alive}>'
 
             def __reduce__(self):
                 return getmain, ()

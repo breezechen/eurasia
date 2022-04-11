@@ -10,8 +10,10 @@ from struct import pack, unpack, calcsize
 from stackless import channel, tasklet, getcurrent
 
 from BaseHTTPServer import BaseHTTPRequestHandler
-RESPONSES = dict((key, '%d %s' %(key, value[0]))
-              for key, value in BaseHTTPRequestHandler.responses.items())
+RESPONSES = {
+    key: '%d %s' % (key, value[0])
+    for key, value in BaseHTTPRequestHandler.responses.items()
+}
 
 del BaseHTTPRequestHandler, sys.modules['BaseHTTPServer']
 
@@ -39,10 +41,8 @@ class FcgiFile(object):
 		self.handle_read = self.read4cache
 
 	def __iter__(self):
-		data = self.readline()
-		while data:
+		while data := self.readline():
 			yield data
-			data = self.readline()
 
 	def __del__(self):
 		if hasattr(self, 'pid'):
@@ -81,9 +81,8 @@ class FcgiFile(object):
 				environ['QUERY_STRING'] = ''
 		else:
 			script_name, path_info, query = uri
-			environ['REQUEST_URI'] = \
-				'%s%s?%s' %(script_name , path_info, query) if query \
-				else        script_name + path_info
+			environ['REQUEST_URI'] = (f'{script_name}{path_info}?{query}'
+			                          if query else script_name + path_info)
 
 			environ['PATH_INFO'   ] = path_info
 			environ['SCRIPT_NAME' ] = script_name
@@ -100,9 +99,8 @@ class FcgiFile(object):
 		environ['SCRIPT_NAME'] = script_name
 
 		query = environ['QUERY_STRING']
-		environ['REQUEST_URI'] = \
-			'%s%s?%s' %(script_name , environ['PATH_INFO'], query) if query \
-			else        script_name + environ['PATH_INFO']
+		environ['REQUEST_URI'] = (f"{script_name}{environ['PATH_INFO']}?{query}"
+		                          if query else script_name + environ['PATH_INFO'])
 
 	script_name = property(get_script_name, set_script_name)
 	del get_script_name, set_script_name
@@ -115,9 +113,8 @@ class FcgiFile(object):
 		environ['PATH_INFO'] = path_info
 
 		query = environ['QUERY_STRING']
-		environ['REQUEST_URI'] = \
-			'%s%s?%s' %(environ['SCRIPT_NAME'] , path_info, query) if query \
-			else        environ['SCRIPT_NAME'] + path_info
+		environ['REQUEST_URI'] = (f"{environ['SCRIPT_NAME']}{path_info}?{query}"
+		                          if query else environ['SCRIPT_NAME'] + path_info)
 
 	path_info = property(get_path_info, set_path_info)
 	del get_path_info, set_path_info
@@ -128,9 +125,9 @@ class FcgiFile(object):
 	def set_query_string(self, query):
 		environ = self.environ
 		environ['QUERY_STRING'] = query
-		environ['REQUEST_URI' ] = \
-			'%s%s?%s' %(environ['SCRIPT_NAME'] , environ['PATH_INFO'], query) if query \
-			else        environ['SCRIPT_NAME'] + environ['PATH_INFO']
+		environ['REQUEST_URI'] = (
+		    f"{environ['SCRIPT_NAME']}{environ['PATH_INFO']}?{query}"
+		    if query else environ['SCRIPT_NAME'] + environ['PATH_INFO'])
 
 	query_string = property(get_query_string, set_query_string)
 	del get_query_string, set_query_string
@@ -142,8 +139,8 @@ class FcgiFile(object):
 			return None
 
 	def setuid(self, uid):
-		self.headers['Set-Cookie'] = 'uid=%s; path=/; expires=%s' %(
-			uid, strftime('%a, %d-%b-%Y %H:%M:%S GMT', gmtime(time() + 157679616)))
+		self.headers[
+		    'Set-Cookie'] = f"uid={uid}; path=/; expires={strftime('%a, %d-%b-%Y %H:%M:%S GMT', gmtime(time() + 157679616))}"
 
 	uid = property(getuid, setuid)
 	del getuid, setuid
@@ -189,7 +186,7 @@ class FcgiFile(object):
 	def update(self, *args, **kwargs):
 		if args:
 			if len(args) > 1:
-				raise TypeError('update expected at most 1 argument, got %s' %len(args))
+				raise TypeError(f'update expected at most 1 argument, got {len(args)}')
 
 			items = args[0]
 			if hasattr(items, 'items'):
@@ -244,12 +241,10 @@ class FcgiFile(object):
 		pass
 
 	def begin(self):
-		headers_set = ['%s: %s' %(key, value)
-		                      for key, value in self.headers.items()] + [
-		               '%s: %s' %(key, value)
-		                      for key, value in self.headers_set]
+		headers_set = [f'{key}: {value}' for key, value in self.headers.items()
+		               ] + [f'{key}: {value}' for key, value in self.headers_set]
 
-		headers_set.insert(0, 'Status: %s' %self._status)
+		headers_set.insert(0, f'Status: {self._status}')
 		headers_set.append('\r\n')
 
 		self.write = self._write
@@ -258,12 +253,10 @@ class FcgiFile(object):
 		del self.headers, self.headers_set
 
 	def wbegin(self, data=''):
-		headers_set = ['%s: %s' %(key, value)
-		                      for key, value in self.headers.items()] + [
-		               '%s: %s' %(key, value)
-		                      for key, value in self.headers_set]
+		headers_set = [f'{key}: {value}' for key, value in self.headers.items()
+		               ] + [f'{key}: {value}' for key, value in self.headers_set]
 
-		headers_set.insert(0, 'Status: %s' %self._status)
+		headers_set.insert(0, f'Status: {self._status}')
 		headers_set.append('\r\n')
 
 		self.write = self._write
@@ -274,12 +267,10 @@ class FcgiFile(object):
 	def close(self):
 		data = ''.join(self.content)
 		self.headers['Content-Length'] = str(len(data))
-		headers_set = ['%s: %s' %(key, value)
-		                      for key, value in self.headers.items()] + [
-		               '%s: %s' %(key, value)
-		                      for key, value in self.headers_set]
+		headers_set = [f'{key}: {value}' for key, value in self.headers.items()
+		               ] + [f'{key}: {value}' for key, value in self.headers_set]
 
-		headers_set.insert(0, 'Status: %s' %self._status)
+		headers_set.insert(0, f'Status: {self._status}')
 		headers_set.append('\r\n')
 
 		data = '\r\n'.join(headers_set) + data
@@ -358,8 +349,6 @@ class FcgiFile(object):
 				buffers.append(data)
 				data = yield
 
-			self.working_channel = None
-			self.read_channel.send(''.join(buffers))
 		else:
 			buf_len = len(data)
 			if buf_len >= size:
@@ -393,8 +382,9 @@ class FcgiFile(object):
 				buf_len += n
 				data = yield
 
-			self.working_channel = None
-			self.read_channel.send(''.join(buffers))
+
+		self.working_channel = None
+		self.read_channel.send(''.join(buffers))
 
 	def read4line(self, size=-1):
 		data = self._rbuf
@@ -431,8 +421,6 @@ class FcgiFile(object):
 
 				data = yield
 
-			self.working_channel = None
-			self.read_channel.send(''.join(buffers))
 		else:
 			nl = data.find('\n', 0, size)
 			if nl >= 0:
@@ -480,8 +468,9 @@ class FcgiFile(object):
 				buf_len += n
 				data = yield
 
-			self.working_channel = None
-			self.read_channel.send(''.join(buffers))
+
+		self.working_channel = None
+		self.read_channel.send(''.join(buffers))
 
 def FcgiHandler(controller):
 	def handler(sock, addr):
